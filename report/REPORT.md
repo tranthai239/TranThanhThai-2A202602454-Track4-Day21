@@ -18,13 +18,34 @@ Lệch yaw 1° làm tỉ lệ điểm LiDAR của người đi bộ rơi đúng 
 
 ## 2. Evidence
 
-Bảng hoặc plot số liệu, kèm ảnh/video demo. Ghi rõ đường dẫn file trong `results/`.
+File số liệu: `results/yaw_perturb_sweep.csv` (KITTI) và `results/yaw_perturb_sweep_nusc.csv` (nuScenes).
 
-| Cấu hình / mức perturb | Metric 1 | Metric 2 | Ghi chú |
-|---|---|---|---|
-| [ĐIỀN] | | | |
+### Bảng 1. Tỉ lệ điểm vật thể rơi đúng vào 2D box (hit_ratio) trên KITTI
 
-![demo](../results/figures/[ĐIỀN].png)
+| Lệch yaw | Frame 000008 (đông xe) | Frame 000011 (tổng) | 000011 (Car) | 000011 (Pedestrian) | Frame 000049 (nhiều vật che) |
+|---|---|---|---|---|---|
+| 0.0° | 99.63% | 99.45% | 99.28% | 99.67% | 99.25% |
+| 0.5° | 99.57% | 91.88% | 96.87% | 85.67% | 97.46% |
+| 1.0° | 98.62% | 77.44% | 91.12% | 61.89% | 93.50% |
+| 2.0° | 94.81% | 45.44% | 71.58% | 21.17% | 84.74% |
+| 3.0° | 90.98% | 21.23% | 42.61% | 5.21% | 74.32% |
+
+### Bảng 2. So sánh với nuScenes (Bonus B5)
+
+| Lệch yaw | nuScenes scene-0103_010 (ngày) | nuScenes scene-1094_010 (đêm) |
+|---|---|---|
+| 0.0° | 100.00% | 100.00% |
+| 0.5° | 97.09% | 100.00% |
+| 1.0° | 90.10% | 96.76% |
+| 2.0° | 72.92% | 85.71% |
+| 3.0° | 62.37% | 74.57% |
+
+![yaw sweep](../results/figures/yaw_sweep.png)
+
+**Nhận xét:**
+1. Lệch yaw ảnh hưởng mạnh nhất tới người đi bộ (vật hẹp): ở 1°, hit_ratio của Pedestrian trong frame 000011 giảm mạnh từ 99.67% xuống 61.89% (giảm 37.78 điểm %), trong khi Car chỉ giảm từ 99.28% xuống 91.12% (giảm 8.16 điểm %). Đến 3°, Pedestrian chỉ còn 5.21% điểm rơi đúng box.
+2. Frame 000008 (chủ yếu là xe con kích thước lớn) rất bền vững với lệch góc: ở 1° vẫn giữ 98.62%, đến 3° vẫn còn 90.98%.
+3. So sánh KITTI vs nuScenes (Bonus B5): nuScenes (32-beam, thưa hơn 3 lần) có độ nhạy tương tự về xu hướng nhưng số điểm tuyệt đối trên mỗi vật ít hơn nhiều, khiến việc mất điểm ở góc lệch lớn gây nguy hiểm cao hơn cho khâu sensor fusion.
 
 ## 3. Failure case
 
@@ -55,6 +76,13 @@ python -m starter.projection --data-root data/kitti_mini --frame 000004
 
 # 3. Demo overlay nuScenes
 python -m starter.projection --data-root data/nuscenes_mini_subset --frame scene-0103_010
+
+# 4. Thí nghiệm quét yaw (KITTI + nuScenes)
+python -m src.exp_yaw_sweep --data-root data/kitti_mini --frames 000008 000011 000049 --out results/yaw_perturb_sweep.csv
+python -m src.exp_yaw_sweep --data-root data/nuscenes_mini_subset --frames scene-0103_010 scene-1094_010 --out results/yaw_perturb_sweep_nusc.csv
+
+# 5. Vẽ biểu đồ benchmark
+python -m src.plot_yaw_sweep
 ```
 
 ## 6. Khai báo sử dụng AI

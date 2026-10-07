@@ -1,0 +1,11 @@
+dataset,frame,yaw_deg,n_points,inside_image,object_points,hit_ratio,hit_ratio_car,hit_ratio_ped,hit_ratio_near,hit_ratio_mid,hit_ratio_far
+nuscenes_mini_subset,scene-0103_010,0.0,34720,3120,104,1.0,1.0,1.0,nan,1.0,1.0
+nuscenes_mini_subset,scene-0103_010,0.5,34720,3126,103,0.9709,0.9888,0.8571,nan,0.9884,0.8824
+nuscenes_mini_subset,scene-0103_010,1.0,34720,3125,101,0.901,0.9425,0.6429,nan,0.9643,0.5882
+nuscenes_mini_subset,scene-0103_010,2.0,34720,3126,96,0.7292,0.8415,0.0714,nan,0.8481,0.1765
+nuscenes_mini_subset,scene-0103_010,3.0,34720,3133,93,0.6237,0.7342,0.0,nan,0.75,0.0588
+nuscenes_mini_subset,scene-1094_010,0.0,34688,3592,364,1.0,1.0,1.0,1.0,1.0,nan
+nuscenes_mini_subset,scene-1094_010,0.5,34688,3594,351,1.0,1.0,1.0,1.0,1.0,nan
+nuscenes_mini_subset,scene-1094_010,1.0,34688,3600,339,0.9676,1.0,0.8571,1.0,0.9484,nan
+nuscenes_mini_subset,scene-1094_010,2.0,34688,3609,315,0.8571,0.9706,0.5065,0.9706,0.8028,nan
+nuscenes_mini_subset,scene-1094_010,3.0,34688,3618,291,0.7457,0.9159,0.2727,0.7848,0.7311,nan
