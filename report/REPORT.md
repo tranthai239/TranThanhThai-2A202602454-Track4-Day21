@@ -71,11 +71,15 @@ File số liệu: `results/yaw_perturb_sweep.csv` (KITTI) và `results/yaw_pertu
 
 ## 4. Khuyến nghị nếu triển khai thật
 
-- **Use-case ADAS / Xe tự hành cấp độ 2-3:**
-  1. **Tự kiểm tra calibration động (Online Self-Calibration Check):** Hệ thống camera-LiDAR fusion trên xe cần theo dõi chỉ số `hit_ratio` theo thời gian thực đối với các vật thể thuộc class Pedestrian/Cyclist ở khoảng cách 15–30 m (dùng output từ 2D camera detector và 3D LiDAR detector).
-  2. **Ngưỡng cảnh báo:** Khi `hit_ratio` của Pedestrian giảm dưới 80% liên tiếp qua 10 frame trong khi Car vẫn đạt >90%, hệ thống phải cảnh báo "Camera-LiDAR extrinsic degraded" và hạ cấp hệ thống về chế độ an toàn (camera-only hoặc LiDAR-only), yêu cầu recalibration.
-  3. **Đánh đổi (Trade-offs):** Việc kiểm tra trên xe cần tính toán nhẹ để không chiếm CPU/GPU. Hàm phép chiếu ma trận vector hóa NumPy chạy mất ~10 ms/frame trên 1 lõi CPU (p50 = 10.22 ms), hoàn toàn có thể chạy nền ở tần số 1–2 Hz để giám sát sức khỏe cảm biến mà không ảnh hưởng latency chính của xe.
-  4. **Yêu cầu đồng bộ thời gian cứng (Hardware PTP Synchronization):** Không chấp nhận độ lệch timestamp giữa camera và LiDAR vượt quá 5 ms nếu không có bù ego-motion với tần số IMU cao (≥100 Hz).
+- **Use-case cụ thể:** Xe giao hàng tự hành trong khu đô thị (urban delivery shuttle), di chuyển tốc độ dưới 30 km/h, vận hành cảm biến LiDAR kết hợp camera trước.
+- **Đánh đổi khi triển khai (Trade-offs):**
+  - Hàm phép chiếu vector hóa ma trận tốn khoảng 10.22 ms CPU (p50) cho mỗi frame 108k điểm. Nếu chạy liên tục mọi frame ở tần số 10 Hz sẽ chiếm đáng kể tài nguyên CPU của hệ thống nhúng.
+  - Giải pháp tối ưu: Chỉ tính toán `hit_ratio` đối với các vật thể người đi bộ ở khoảng cách 15–30 m mỗi khi xe dừng đèn đỏ hoặc giảm tốc dưới 5 km/h; hoặc chạy nền định kỳ ở tần số 1 Hz khi xe di chuyển. Điều này tiết kiệm tài nguyên tính toán nhưng vẫn phát hiện sớm độ lệch trước khi gây mất an toàn.
+- **Chỉ số cần ghi log & Ngưỡng cảnh báo:**
+  - Ghi log `hit_ratio` trung bình của class Pedestrian theo từng cửa sổ 1 phút.
+  - Ngưỡng cảnh báo: Khi `hit_ratio` của Pedestrian giảm dưới 80% liên tục trong 10 frame (trong khi Car vẫn đạt >90%), hệ thống kích hoạt cảnh báo calibration drift trục yaw (bắt được lệch từ 0.5°–1.0° theo Bảng 1) và tạm thời hạ cấp sang chế độ dự phòng (LiDAR-only).
+  - Cần ghi log thêm nhiệt độ giá đỡ cảm biến (mounting rig) và gia tốc kế IMU để phân biệt lệch góc do giãn nở nhiệt hay do va chạm cơ học.
+  - Ghi log độ lệch timestamp `|t_cam - t_lidar|`; nếu vượt quá 10 ms mà không có dữ liệu odometry bù ego-motion, đánh dấu frame không an toàn cho tác vụ fusion.
 
 ### Các mục điểm thưởng đã hoàn thành (Bonus B2, B3, B4, B5, B6):
 - **[B5] So sánh hai dataset thật:** Đã trình bày chi tiết tại Mục 2 (Bảng 2, biểu đồ hình c). nuScenes 32-beam nhạy cảm hơn khi mất sạch điểm pedestrian ở 2° yaw so với KITTI 64-beam.
@@ -124,4 +128,6 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| Claude (Anthropic) | Hỗ trợ gợi ý cú pháp ma trận NumPy vector hóa và khung vẽ biểu đồ Matplotlib đa subplot | Chạy test tự kiểm `test_projection.py` xác nhận toạ độ (10, 0, 0) ra đúng z_cam=9.73 và pixel (614, 175); đối chiếu số liệu hit_ratio với bảng kỳ vọng của bài lab |
+| Claude (Anthropic) | Gợi ý phép nhân ma trận đồng nhất vector hóa trong `velo_to_cam` và `cam_to_image` | Chạy test tự kiểm `src.test_projection` xác nhận toạ độ (10, 0, 0) ra đúng z_cam=9.73 và pixel (614, 175) |
+| Claude (Anthropic) | Khung code vẽ biểu đồ Matplotlib đa subplot trong `src/plot_yaw_sweep.py` | Đối chiếu từng điểm dữ liệu trên biểu đồ trực tiếp với file `results/yaw_perturb_sweep.csv` |
+| Claude (Anthropic) | Hỗ trợ cấu trúc script đo latency p50/p95 và audit lỗi trong `data/synthetic` | Chạy `measure_latency.py` 20 lần ghi log ra CSV; kiểm tra thủ công mảng NaN và `timestamps.txt` |
