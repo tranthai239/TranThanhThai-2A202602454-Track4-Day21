@@ -49,11 +49,25 @@ File số liệu: `results/yaw_perturb_sweep.csv` (KITTI) và `results/yaw_pertu
 
 ## 3. Failure case
 
-Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên hệ tới lớp nào trong 6 lớp debug: I/O, Geometry, Time, Preprocess, Model, Metric.
+### Case 1: Lệch góc extrinsic trên vật thể hẹp (Lớp Geometry)
 
-![failure](../results/figures/fail_[ĐIỀN].png)
+![fail geometry](../results/figures/fail_01_yaw_2deg_pedestrian.png)
 
-[ĐIỀN]
+- **Trường hợp:** KITTI frame 000011, người đi bộ ở khoảng cách 15–35 m, khi extrinsic bị lệch yaw +2.0°.
+- **Quan sát:** Tỉ lệ điểm LiDAR rơi vào 2D box của người đi bộ giảm đột ngột từ 99.67% xuống 21.17% (rơi mất 78.5 điểm %). Trên ảnh zoom, chùm điểm LiDAR trượt ngang hoàn toàn ra khỏi thân người đi bộ và rơi vào nền đường/tường.
+- **Nguyên nhân:** Tiêu cự camera f ≈ 721.5 px, lệch góc yaw θ = 2° làm dịch ngang trên ảnh Δu ≈ f · tan(2°) ≈ 25.2 px bất kể khoảng cách. Người đi bộ ở 25 m có bề rộng trên ảnh chỉ khoảng 18–25 px, nên độ dịch 25.2 px đẩy gần như 100% điểm của vật thể ra khỏi 2D box.
+- **Lớp debug:** Geometry (ma trận extrinsic `Tr_velo_to_cam` bị drift).
+- **Cách phát hiện khi chạy thật:** Theo dõi tỉ lệ điểm LiDAR của detection 3D rơi vào 2D bbox tương ứng (hit_ratio). Nếu hit_ratio trung bình của class Pedestrian giảm xuống dưới 80% trong khi Car vẫn > 95%, kích hoạt cảnh báo calibration drift trục yaw.
+
+### Case 2: Mất đồng bộ thời gian LiDAR - Camera (Lớp Time)
+
+![fail time](../results/figures/fail_02_nusc_no_ego_motion.png)
+
+- **Trường hợp:** nuScenes frame scene-0103_010, xe đang chuyển động, tắt bù chuyển động (`use_ego_motion=False`).
+- **Quan sát:** Tổng số điểm chiếu vào ảnh giảm từ 3120 điểm xuống 2911 điểm. Cụm điểm phản xạ của đầu xe phía trước bị trôi về phía sau so với bounding box thật của xe trên ảnh.
+- **Nguyên nhân:** Camera trước chụp lệch thời điểm so với LiDAR 35.6 ms (`timestamp_camera_us - timestamp_lidar_us = -35616 us`). Trong khoảng thời gian này, xe ego di chuyển được khoảng 0.35 m (vận tốc ~10 m/s), gây sai lệch vị trí tương đối giữa cảm biến và vật thể tĩnh/động.
+- **Lớp debug:** Time (thiếu deskew / bù chuyển động ego pose).
+- **Cách phát hiện khi chạy thật:** Kiểm tra timestamp chênh lệch `|t_cam - t_lidar|`. Nếu vượt quá 10 ms mà không có dữ liệu odometry/IMU hợp lệ để nội suy ego pose, đánh dấu frame là không an toàn cho tác vụ fusion camera-LiDAR.
 
 ## 4. Khuyến nghị nếu triển khai thật
 
@@ -83,6 +97,9 @@ python -m src.exp_yaw_sweep --data-root data/nuscenes_mini_subset --frames scene
 
 # 5. Vẽ biểu đồ benchmark
 python -m src.plot_yaw_sweep
+
+# 6. Tạo ảnh failure cases (Geometry drift và Time deskew)
+python -m src.make_failure_cases
 ```
 
 ## 6. Khai báo sử dụng AI
