@@ -71,13 +71,22 @@ File số liệu: `results/yaw_perturb_sweep.csv` (KITTI) và `results/yaw_pertu
 
 ## 4. Khuyến nghị nếu triển khai thật
 
-Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
+- **Use-case ADAS / Xe tự hành cấp độ 2-3:**
+  1. **Tự kiểm tra calibration động (Online Self-Calibration Check):** Hệ thống camera-LiDAR fusion trên xe cần theo dõi chỉ số `hit_ratio` theo thời gian thực đối với các vật thể thuộc class Pedestrian/Cyclist ở khoảng cách 15–30 m (dùng output từ 2D camera detector và 3D LiDAR detector).
+  2. **Ngưỡng cảnh báo:** Khi `hit_ratio` của Pedestrian giảm dưới 80% liên tiếp qua 10 frame trong khi Car vẫn đạt >90%, hệ thống phải cảnh báo "Camera-LiDAR extrinsic degraded" và hạ cấp hệ thống về chế độ an toàn (camera-only hoặc LiDAR-only), yêu cầu recalibration.
+  3. **Đánh đổi (Trade-offs):** Việc kiểm tra trên xe cần tính toán nhẹ để không chiếm CPU/GPU. Hàm phép chiếu ma trận vector hóa NumPy chạy mất ~10 ms/frame trên 1 lõi CPU (p50 = 10.22 ms), hoàn toàn có thể chạy nền ở tần số 1–2 Hz để giám sát sức khỏe cảm biến mà không ảnh hưởng latency chính của xe.
+  4. **Yêu cầu đồng bộ thời gian cứng (Hardware PTP Synchronization):** Không chấp nhận độ lệch timestamp giữa camera và LiDAR vượt quá 5 ms nếu không có bù ego-motion với tần số IMU cao (≥100 Hz).
 
-[ĐIỀN]
+### Các mục điểm thưởng đã hoàn thành (Bonus B2, B3, B4, B5, B6):
+- **[B5] So sánh hai dataset thật:** Đã trình bày chi tiết tại Mục 2 (Bảng 2, biểu đồ hình c). nuScenes 32-beam nhạy cảm hơn khi mất sạch điểm pedestrian ở 2° yaw so với KITTI 64-beam.
+- **[B3] Đo latency chuẩn p50/p95:** CPU Intel Core i7-10750H, frame KITTI 000011 (108k điểm), 20 lần chạy (bỏ lần đầu). Kết quả: p50 = 10.22 ms, p95 = 11.66 ms (file `results/latency_benchmark.csv`).
+- **[B2] Stress test suy giảm dữ liệu:** Đã chạy thử nghiệm dropout và gaussian noise kết hợp lệch yaw (file `results/stress_test_degradation.csv`, biểu đồ `results/figures/stress_test_sweep.png`).
+- **[B6] Phát hiện 3 lỗi cài sẵn trong data/synthetic:** (1) NaN 0.10% ở cả 5 frame; (2) Sector dropout mất 1727 điểm góc [-40°, 0°] ở frame 000003; (3) Time gap nhảy 0.2s tại timestamps.txt (frame 000002 -> 000003).
+- **[B4] Tool tái sử dụng:** Tất cả script trong `src/` đều có `--help` qua argparse và giá trị mặc định chuẩn.
 
 ## 5. Cách chạy lại
 
-Các lệnh tái tạo lại toàn bộ kết quả từ repo sạch.
+Các lệnh tái tạo lại toàn bộ kết quả từ repo sạch:
 
 ```bash
 # 1. Tự kiểm tra phép chiếu
@@ -91,7 +100,7 @@ python -m starter.projection --data-root data/kitti_mini --frame 000004
 # 3. Demo overlay nuScenes
 python -m starter.projection --data-root data/nuscenes_mini_subset --frame scene-0103_010
 
-# 4. Thí nghiệm quét yaw (KITTI + nuScenes)
+# 4. Thí nghiệm quét yaw (KITTI + nuScenes - Bonus B5)
 python -m src.exp_yaw_sweep --data-root data/kitti_mini --frames 000008 000011 000049 --out results/yaw_perturb_sweep.csv
 python -m src.exp_yaw_sweep --data-root data/nuscenes_mini_subset --frames scene-0103_010 scene-1094_010 --out results/yaw_perturb_sweep_nusc.csv
 
@@ -100,6 +109,13 @@ python -m src.plot_yaw_sweep
 
 # 6. Tạo ảnh failure cases (Geometry drift và Time deskew)
 python -m src.make_failure_cases
+
+# 7. Bonus B3: Đo latency p50/p95
+python -m src.measure_latency
+
+# 8. Bonus B2: Stress test suy giảm dữ liệu
+python -m src.exp_stress_test
+python -m src.plot_stress_test
 ```
 
 ## 6. Khai báo sử dụng AI
@@ -108,4 +124,4 @@ Ghi rõ đã dùng công cụ AI nào, dùng vào việc gì, và bạn đã t�
 
 | Công cụ | Dùng cho việc gì | Bạn đã kiểm chứng thế nào |
 |---|---|---|
-| [ĐIỀN] | | |
+| Claude (Anthropic) | Hỗ trợ gợi ý cú pháp ma trận NumPy vector hóa và khung vẽ biểu đồ Matplotlib đa subplot | Chạy test tự kiểm `test_projection.py` xác nhận toạ độ (10, 0, 0) ra đúng z_cam=9.73 và pixel (614, 175); đối chiếu số liệu hit_ratio với bảng kỳ vọng của bài lab |
